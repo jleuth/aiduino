@@ -2,10 +2,13 @@ import { NextResponse } from "next/server";
 
 export const runtime = "edge";
 
+interface DataPoint {
+  [key: string]: any;
+}
+
 interface Sample {
   timestamp: number;
-  temp: number;
-  hum: number;
+  data: DataPoint; // Updated to generic data structure
 }
 
 export async function POST(request: Request) {

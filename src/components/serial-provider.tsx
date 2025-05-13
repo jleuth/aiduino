@@ -4,10 +4,13 @@ import React, { createContext, useContext, useState, useCallback, useRef, useEff
 import { RingBuffer } from "@/lib/ring-buffer";
 import { toast } from "sonner"; // Updated to sonner
 
+export interface DataPoint {
+  [key: string]: any; // Allow any other data, assuming it's JSON-parseable
+}
+
 export interface Sample {
   timestamp: number;
-  temp: number;
-  hum: number;
+  data: DataPoint; // Changed from temp/hum to a generic data object
 }
 
 interface SerialContextType {
@@ -67,14 +70,18 @@ export const SerialProvider: React.FC<{ children: React.ReactNode }> = ({ childr
               if (line) {
                 try {
                   const jsonData = JSON.parse(line);
-                  if (typeof jsonData.temp === 'number' && typeof jsonData.hum === 'number') {
+                  // Ensure jsonData is an object before creating a sample
+                  if (typeof jsonData === 'object' && jsonData !== null && !Array.isArray(jsonData)) {
                     const newSample: Sample = {
                       timestamp: Date.now(),
-                      temp: jsonData.temp,
-                      hum: jsonData.hum,
+                      data: jsonData, // Store the entire parsed JSON object
                     };
                     ringBufferRef.current.push(newSample);
                     setSamples([...ringBufferRef.current.toArray()]); // Create new array to trigger re-render
+                  } else {
+                    console.warn("Received non-object JSON data from serial:", line);
+                    // Optionally, you could toast an error/warning here if this happens frequently
+                    // toast.warning("Data Format Issue", { description: "Received non-object JSON from serial." });
                   }
                 } catch (e) {
                   console.warn("Failed to parse JSON from serial:", line, e);

@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import useSWRMutation from "swr/mutation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Sample } from "./serial-provider";
+import { Sample } from "./serial-provider"; // Sample type is now generic
 import { toast } from "sonner"; // Updated to sonner
 
 interface SummaryCardProps {

@@ -14,7 +14,7 @@ import {
   TimeScale,
 } from "chart.js";
 import "chartjs-adapter-date-fns";
-import { Sample } from "./serial-provider";
+import { Sample, DataPoint } from "./serial-provider"; // Import DataPoint
 
 ChartJS.register(
   CategoryScale,
@@ -32,24 +32,31 @@ interface SensorChartProps {
 }
 
 const SensorChart: React.FC<SensorChartProps> = ({ samples }) => {
+  // Dynamically create datasets based on the keys in the first sample's data
+  // This assumes all samples will have a similar structure to the first one for charting purposes.
+  // More sophisticated logic might be needed if data structures vary wildly.
+  const dataKeys = samples.length > 0 ? Object.keys(samples[0].data).filter(key => typeof samples[0].data[key] === 'number') : [];
+
   const chartData = {
     labels: samples.map((s) => new Date(s.timestamp)),
-    datasets: [
-      {
-        label: "Temperature (°C)",
-        data: samples.map((s) => s.temp),
-        borderColor: "rgb(255, 99, 132)",
-        backgroundColor: "rgba(255, 99, 132, 0.5)",
-        yAxisID: "yTemp",
-      },
-      {
-        label: "Humidity (%)",
-        data: samples.map((s) => s.hum),
-        borderColor: "rgb(54, 162, 235)",
-        backgroundColor: "rgba(54, 162, 235, 0.5)",
-        yAxisID: "yHum",
-      },
-    ],
+    datasets: dataKeys.map((key, index) => {
+      // Basic color cycling, can be improved
+      const colors = [
+        "rgb(255, 99, 132)",
+        "rgb(54, 162, 235)",
+        "rgb(75, 192, 192)",
+        "rgb(255, 205, 86)",
+        "rgb(153, 102, 255)",
+      ];
+      const color = colors[index % colors.length];
+      return {
+        label: key.charAt(0).toUpperCase() + key.slice(1), // Capitalize key for label
+        data: samples.map((s) => s.data[key]),
+        borderColor: color,
+        backgroundColor: color.replace("rgb", "rgba").replace(")", ", 0.5)"),
+        yAxisID: `y-${key}`,
+      };
+    }),
   };
 
   const options = {
@@ -70,31 +77,23 @@ const SensorChart: React.FC<SensorChartProps> = ({ samples }) => {
           text: "Time",
         },
       },
-      yTemp: {
-        type: "linear" as const,
-        display: true,
-        position: "left" as const,
-        title: {
+      // Dynamically create Y-axes
+      ...(dataKeys.reduce((acc, key, index) => {
+        acc[`y-${key}`] = {
+          type: "linear" as const,
           display: true,
-          text: "Temperature (°C)",
-        },
-        suggestedMin: 0,
-        suggestedMax: 40,
-      },
-      yHum: {
-        type: "linear" as const,
-        display: true,
-        position: "right" as const,
-        title: {
-          display: true,
-          text: "Humidity (%)",
-        },
-        grid: {
-          drawOnChartArea: false, // only want the grid lines for one axis to show up
-        },
-        suggestedMin: 0,
-        suggestedMax: 100,
-      },
+          position: index % 2 === 0 ? "left" as const : "right" as const, // Alternate sides
+          title: {
+            display: true,
+            text: key.charAt(0).toUpperCase() + key.slice(1),
+          },
+          // suggestedMin and suggestedMax can be dynamic or removed for auto-scaling
+          grid: {
+            drawOnChartArea: index === 0, // Only draw grid for the first Y-axis to avoid clutter
+          },
+        };
+        return acc;
+      }, {} as any)), // Type assertion needed for dynamic keys
     },
     plugins: {
       legend: {
